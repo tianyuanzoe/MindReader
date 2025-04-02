@@ -13,8 +13,8 @@ MindReader is a powerful text analysis dashboard that delves into the depths of 
 
 1. Clone the repository:
 ```bash
-git clone <your-repository-url>
-cd <repository-name>
+git clone https://github.com/tianyuanzoe/MindReader.git
+cd MindReader
 ```
 
 2. Create a virtual environment (recommended):
@@ -106,9 +106,17 @@ streamlit run app/app.py
 
 ## Contributing
 
-Feel free to submit issues and enhancement requests!
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgments
 
 - Thanks to all the model contributors and maintainers
-- Built with Streamlit 
+- Built with Streamlit
+
+## Author
+
+- Tianyuan Zhou - [GitHub](https://github.com/tianyuanzoe) 
