@@ -11,19 +11,40 @@ MindReader is a powerful text analysis dashboard that delves into the depths of 
 
 ## Installation
 
-1. Clone the repository:
+1. Install Git LFS (Large File Storage):
+   - On macOS with Homebrew:
+     ```bash
+     brew install git-lfs
+     ```
+   - On Windows with Chocolatey:
+     ```bash
+     choco install git-lfs
+     ```
+   - On Linux:
+     ```bash
+     curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+     sudo apt-get install git-lfs
+     ```
+
+2. Clone the repository:
 ```bash
 git clone https://github.com/tianyuanzoe/MindReader.git
 cd MindReader
 ```
 
-2. Create a virtual environment (recommended):
+3. Pull the large model files using Git LFS:
+```bash
+git lfs install
+git lfs pull
+```
+
+4. Create a virtual environment (recommended):
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows, use: venv\Scripts\activate
 ```
 
-3. Install the required dependencies:
+5. Install the required dependencies:
 ```bash
 pip install -r requirements.txt
 ```
@@ -106,17 +127,9 @@ streamlit run app/app.py
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+Feel free to submit issues and enhancement requests!
 
 ## Acknowledgments
 
 - Thanks to all the model contributors and maintainers
-- Built with Streamlit
-
-## Author
-
-- Tianyuan Zhou - [GitHub](https://github.com/tianyuanzoe) 
+- Built with Streamlit 
