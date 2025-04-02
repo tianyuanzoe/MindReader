@@ -4,6 +4,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 import torch
 import json
 import numpy as np
+import re
 
 # Set page config
 st.set_page_config(
@@ -120,37 +121,85 @@ st.markdown("""
     - Country Classification: Identifies the country of origin based on writing style
 """)
 
+def clean_text(text):
+    text = text.lower()  
+    text = re.sub('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', 'url', text).strip() # replace url
+    text = re.sub(r'[^a-zA-Z\s]', ' ', text)  
+    text = re.sub(r'\s+', ' ', text).strip() 
+    return text
+
 # Load models
 @st.cache_resource
 def load_models():
-    # Load sentiment model and its components
-    sentiment_model = AutoModelForSequenceClassification.from_pretrained("../models/sentiment_model")
-    sentiment_tokenizer = AutoTokenizer.from_pretrained("../models/sentiment_model")
-    sentiment_model.eval()
-    sentiment_label_encoder = joblib.load("../models/sentiment_model/sentiment_label_encoder.pkl")
-    
-    # Load emotion model
-    emotion_model = joblib.load("../models/emotion_model/linear_svm_tfidf_model.joblib")
-    
-    # Load MBTI model
-    mbti_model = joblib.load("../models/mbti_model/mbti-vectorized-SVC.joblib")
-    
-    # Load country model and its components
-    country_model = AutoModelForSequenceClassification.from_pretrained("../models/country_model")
-    country_tokenizer = AutoTokenizer.from_pretrained("../models/country_model")
-    with open("../models/country_model/label_mapping.json", "r") as f:
-        country_label_mapping = json.load(f)
-    country_id2label = {v: k for k, v in country_label_mapping.items()}
-    
-    return (sentiment_model, sentiment_tokenizer, sentiment_label_encoder, emotion_model, mbti_model, 
-            country_model, country_tokenizer, country_id2label)
+    try:
+        # Load sentiment model and its components
+        sentiment_model = AutoModelForSequenceClassification.from_pretrained(
+            "./models/sentiment_model",
+            local_files_only=True,
+            trust_remote_code=True
+        )
+        sentiment_tokenizer = AutoTokenizer.from_pretrained(
+            "./models/sentiment_model",
+            local_files_only=True,
+            trust_remote_code=True
+        )
+        sentiment_model.eval()
+        sentiment_label_encoder = joblib.load("./models/sentiment_model/sentiment_label_encoder.pkl")
+        
+        # Load emotion model
+        emotion_model = joblib.load("./models/emotion_model/linear_svm_tfidf_model.joblib")
+        
+        # Load MBTI models
+        mbti_models = {
+            'I/E': joblib.load("./models/mbti_model/mbti_I_E_SVC.joblib"),
+            'N/S': joblib.load("./models/mbti_model/mbti_N_S_SVC.joblib"),
+            'T/F': joblib.load("./models/mbti_model/mbti_T_F_SVC.joblib"),
+            'J/P': joblib.load("./models/mbti_model/mbti_J_P_SVC.joblib")
+        }
+        mbti_dimension_mapping = {
+            'I/E': {1: 'I', 0: 'E'},
+            'N/S': {1: 'N', 0: 'S'},
+            'T/F': {1: 'T', 0: 'F'},
+            'J/P': {1: 'J', 0: 'P'}
+        }
+        
+        # Load country model and its components
+        country_model = AutoModelForSequenceClassification.from_pretrained(
+            "./models/country_model",
+            local_files_only=True,
+            trust_remote_code=True
+        )
+        country_tokenizer = AutoTokenizer.from_pretrained(
+            "./models/country_model",
+            local_files_only=True,
+            trust_remote_code=True
+        )
+        with open("./models/country_model/label_mapping.json", "r") as f:
+            country_label_mapping = json.load(f)
+        country_id2label = {v: k for k, v in country_label_mapping.items()}
+        
+        return (sentiment_model, sentiment_tokenizer, sentiment_label_encoder, emotion_model, 
+                mbti_models, mbti_dimension_mapping, country_model, country_tokenizer, country_id2label)
+    except Exception as e:
+        st.error(f"Error loading models: {str(e)}")
+        st.error("Please ensure all model files are present in their respective directories.")
+        st.stop()
 
 # Load models
 try:
-    sentiment_model, sentiment_tokenizer, sentiment_label_encoder, emotion_model, mbti_model, country_model, country_tokenizer, country_id2label = load_models()
+    sentiment_model, sentiment_tokenizer, sentiment_label_encoder, emotion_model, \
+    mbti_models, mbti_dimension_mapping, country_model, country_tokenizer, country_id2label = load_models()
 except Exception as e:
     st.error(f"Error loading models: {str(e)}")
     st.stop()
+
+def predict_mbti(text):
+    cleaned_text = clean_text(text)
+    mbti = []
+    for dim, model in mbti_models.items():
+        pred = model.predict([cleaned_text])[0]
+        mbti.append(mbti_dimension_mapping[dim][pred])
+    return ''.join(mbti)
 
 # Create two columns for input and results
 col1, col2 = st.columns([1, 1])
@@ -162,14 +211,23 @@ with col1:
         label="Text to Analyze",
         label_visibility="visible",
         height=150,
-        placeholder="Type or paste your text here...",
+        placeholder="Type or paste your text here... (minimum 50 characters recommended for best results)",
         key="text_input",
-        help="Enter the text you want to analyze. The text will be processed by all four models simultaneously."
+        help="Enter the text you want to analyze. The text will be processed by all four models simultaneously. For best results, provide at least 50 characters of text."
     )
     
     # Analyze button
     if st.button("Analyze Text", key="analyze", help="Click to analyze the entered text using all four models"):
         if text_input:
+            # Input validation
+            text_length = len(text_input.strip())
+            if text_length < 10:
+                st.warning("⚠️ Please enter at least 10 characters for basic analysis.")
+            elif text_length < 20:
+                st.info("ℹ️ For better results, consider entering more text (at least 20 characters).")
+            elif text_length < 50:
+                st.info("ℹ️ For most accurate MBTI and country predictions, consider entering more text (at least 50 characters).")
+            
             with st.spinner("Analyzing text..."):
                 # Sentiment Analysis
                 sentiment_inputs = sentiment_tokenizer(text_input, return_tensors="pt", truncation=True, max_length=512)
@@ -182,7 +240,7 @@ with col1:
                 emotion_result = emotion_model.predict([text_input])[0]
                 
                 # MBTI Prediction
-                mbti_result = mbti_model.predict([text_input])[0]
+                mbti_result = predict_mbti(text_input)
                 
                 # Country Classification
                 country_inputs = country_tokenizer(text_input, return_tensors="pt", truncation=True, max_length=512)
